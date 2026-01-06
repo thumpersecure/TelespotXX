@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleSpotter - Phone Number OSINT Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#8b5cf6',
+                        dark: {
+                            100: '#1e293b',
+                            200: '#0f172a',
+                            300: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gradient-border {
+            border: 2px solid transparent;
+            background: linear-gradient(#0f172a, #0f172a) padding-box,
+                        linear-gradient(135deg, #3b82f6, #8b5cf6) border-box;
+        }
+        .glow {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+        .pulse-glow {
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar {
+            transition: width 0.5s ease-out;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+    </style>
+</head>
+<body class="bg-dark-300 text-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 bg-dark-200/95 backdrop-blur-sm border-b border-gray-800 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-phone-alt text-primary text-2xl mr-3"></i>
+                    <span class="text-xl font-bold gradient-text">TeleSpotter</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="showHelp()" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-question-circle text-xl"></i>
+                    </button>
+                    <a href="https://github.com/thumpersecure" target="_blank" class="text-gray-400 hover:text-white transition">
+                        <i class="fab fa-github text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pt-20 pb-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            <!-- Hero Section -->
+            <section class="text-center py-12">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                    <span class="gradient-text">Phone Number Intelligence</span>
+                </h1>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
+                    Comprehensive OSINT tool for researching phone numbers. Search across multiple engines,
+                    people search databases, and extract valuable intelligence.
+                </p>
+
+                <!-- Quick Stats -->
+                <div class="flex flex-wrap justify-center gap-6 mb-8">
+                    <div class="flex items-center space-x-2 text-gray-400">
+                        <i class="fas fa-search text-primary"></i>
+                        <span>3 Search Engines</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-gray-400">
+                        <i class="fas fa-users text-secondary"></i>
+                        <span>5 People Search Sites</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-gray-400">
+                        <i class="fas fa-brain text-green-500"></i>
+                        <span>Pattern Analysis</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-gray-400">
+                        <i class="fas fa-download text-yellow-500"></i>
+                        <span>Export Results</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Search Form -->
+            <section id="search-section" class="max-w-4xl mx-auto">
+                <div class="gradient-border rounded-2xl p-6 bg-dark-200">
+                    <form id="search-form" class="space-y-6">
+                        <!-- Phone Input -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-phone mr-2 text-primary"></i>Phone Number
+                            </label>
+                            <div class="relative">
+                                <input type="text" id="phone-input"
+                                    class="w-full px-4 py-4 bg-dark-100 border border-gray-700 rounded-xl text-white text-lg
+                                           focus:ring-2 focus:ring-primary focus:border-transparent transition
+                                           placeholder-gray-500"
+                                    placeholder="Enter phone number (e.g., +1 555-123-4567)"
+                                    autocomplete="off">
+                                <div id="phone-validation" class="absolute right-4 top-1/2 -translate-y-1/2 hidden">
+                                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-500">
+                                Supports international formats: +1 (555) 123-4567, 555-123-4567, 5551234567
+                            </p>
+                        </div>
+
+                        <!-- Options Toggle -->
+                        <div>
+                            <button type="button" onclick="toggleOptions()"
+                                class="flex items-center text-gray-400 hover:text-white transition">
+                                <i id="options-icon" class="fas fa-chevron-right mr-2 transition-transform"></i>
+                                <span>Advanced Options</span>
+                            </button>
+                        </div>
+
+                        <!-- Advanced Options -->
+                        <div id="options-panel" class="hidden space-y-6 pt-4 border-t border-gray-700">
+
+                            <!-- Search Engines -->
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-300 mb-3">
+                                    <i class="fas fa-globe mr-2 text-primary"></i>Search Engines
+                                </h3>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-google" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3 flex items-center">
+                                            <i class="fab fa-google text-red-500 mr-2"></i>Google
+                                        </span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-bing" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3 flex items-center">
+                                            <i class="fab fa-microsoft text-blue-400 mr-2"></i>Bing
+                                        </span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-duckduckgo" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3 flex items-center">
+                                            <i class="fas fa-duck text-yellow-500 mr-2"></i>DuckDuckGo
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- People Search Sites -->
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-300 mb-3">
+                                    <i class="fas fa-users mr-2 text-secondary"></i>People Search Sites
+                                </h3>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-whitepages" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">Whitepages</span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-truepeoplesearch" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">TruePeopleSearch</span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-fastpeoplesearch" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">FastPeopleSearch</span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-spokeo" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">Spokeo</span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-beenverified" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">BeenVerified</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Additional Options -->
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-300 mb-3">
+                                    <i class="fas fa-cog mr-2 text-green-500"></i>Analysis Options
+                                </h3>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-extract-names" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">Extract Names</span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-extract-emails" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">Extract Emails</span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-extract-addresses" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">Extract Addresses</span>
+                                    </label>
+                                    <label class="flex items-center p-3 bg-dark-100 rounded-lg cursor-pointer hover:bg-dark-100/70 transition">
+                                        <input type="checkbox" id="opt-extract-social" checked class="rounded border-gray-600 text-primary focus:ring-primary bg-dark-300">
+                                        <span class="ml-3">Find Social Profiles</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="search-btn"
+                            class="w-full py-4 px-6 bg-gradient-to-r from-primary to-secondary rounded-xl text-white font-semibold
+                                   hover:opacity-90 transition transform hover:scale-[1.02] active:scale-[0.98]
+                                   disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                            <span id="btn-text">
+                                <i class="fas fa-search mr-2"></i>Start Search
+                            </span>
+                            <span id="btn-loading" class="hidden">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Searching...
+                            </span>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Progress Section -->
+            <section id="progress-section" class="hidden max-w-4xl mx-auto mt-8">
+                <div class="gradient-border rounded-2xl p-6 bg-dark-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold">
+                            <i class="fas fa-tasks mr-2 text-primary"></i>Search Progress
+                        </h2>
+                        <span id="progress-percent" class="text-2xl font-bold gradient-text">0%</span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-dark-100 rounded-full h-3 mb-4 overflow-hidden">
+                        <div id="progress-bar" class="progress-bar bg-gradient-to-r from-primary to-secondary h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+
+                    <!-- Status Message -->
+                    <p id="progress-message" class="text-gray-400 text-sm">
+                        <i class="fas fa-circle-notch fa-spin mr-2"></i>Initializing search...
+                    </p>
+
+                    <!-- Live Updates -->
+                    <div id="live-updates" class="mt-4 max-h-32 overflow-y-auto space-y-1">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="hidden max-w-6xl mx-auto mt-8">
+                <!-- Results Header -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <h2 class="text-2xl font-bold">
+                        <i class="fas fa-chart-bar mr-2 text-primary"></i>Results
+                    </h2>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="exportResults('json')" class="px-4 py-2 bg-dark-100 rounded-lg hover:bg-dark-100/70 transition flex items-center">
+                            <i class="fas fa-file-code mr-2 text-yellow-500"></i>JSON
+                        </button>
+                        <button onclick="exportResults('csv')" class="px-4 py-2 bg-dark-100 rounded-lg hover:bg-dark-100/70 transition flex items-center">
+                            <i class="fas fa-file-csv mr-2 text-green-500"></i>CSV
+                        </button>
+                        <button onclick="exportResults('txt')" class="px-4 py-2 bg-dark-100 rounded-lg hover:bg-dark-100/70 transition flex items-center">
+                            <i class="fas fa-file-alt mr-2 text-blue-500"></i>TXT
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Phone Info Card -->
+                <div id="phone-info-card" class="gradient-border rounded-2xl p-6 bg-dark-200 mb-6">
+                    <h3 class="text-lg font-semibold mb-4">
+                        <i class="fas fa-phone-alt mr-2 text-primary"></i>Phone Information
+                    </h3>
+                    <div id="phone-info-content" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Results Tabs -->
+                <div class="mb-6">
+                    <div class="flex flex-wrap border-b border-gray-700">
+                        <button onclick="showTab('extracted')" id="tab-extracted" class="tab-btn px-6 py-3 text-primary border-b-2 border-primary font-medium">
+                            <i class="fas fa-brain mr-2"></i>Extracted Data
+                        </button>
+                        <button onclick="showTab('search')" id="tab-search" class="tab-btn px-6 py-3 text-gray-400 hover:text-white transition">
+                            <i class="fas fa-search mr-2"></i>Search Results
+                        </button>
+                        <button onclick="showTab('people')" id="tab-people" class="tab-btn px-6 py-3 text-gray-400 hover:text-white transition">
+                            <i class="fas fa-users mr-2"></i>People Search
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Extracted Data -->
+                <div id="content-extracted" class="tab-content">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Names Card -->
+                        <div class="bg-dark-200 rounded-xl p-5 border border-gray-800">
+                            <h4 class="font-semibold mb-3 flex items-center">
+                                <i class="fas fa-user text-blue-500 mr-2"></i>Names
+                                <span id="names-count" class="ml-auto bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-sm">0</span>
+                            </h4>
+                            <div id="names-list" class="space-y-2 max-h-48 overflow-y-auto">
+                                <p class="text-gray-500 text-sm">No names found yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Emails Card -->
+                        <div class="bg-dark-200 rounded-xl p-5 border border-gray-800">
+                            <h4 class="font-semibold mb-3 flex items-center">
+                                <i class="fas fa-envelope text-green-500 mr-2"></i>Emails
+                                <span id="emails-count" class="ml-auto bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-sm">0</span>
+                            </h4>
+                            <div id="emails-list" class="space-y-2 max-h-48 overflow-y-auto">
+                                <p class="text-gray-500 text-sm">No emails found yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Addresses Card -->
+                        <div class="bg-dark-200 rounded-xl p-5 border border-gray-800">
+                            <h4 class="font-semibold mb-3 flex items-center">
+                                <i class="fas fa-map-marker-alt text-red-500 mr-2"></i>Addresses
+                                <span id="addresses-count" class="ml-auto bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-sm">0</span>
+                            </h4>
+                            <div id="addresses-list" class="space-y-2 max-h-48 overflow-y-auto">
+                                <p class="text-gray-500 text-sm">No addresses found yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Usernames Card -->
+                        <div class="bg-dark-200 rounded-xl p-5 border border-gray-800">
+                            <h4 class="font-semibold mb-3 flex items-center">
+                                <i class="fas fa-at text-purple-500 mr-2"></i>Usernames
+                                <span id="usernames-count" class="ml-auto bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-sm">0</span>
+                            </h4>
+                            <div id="usernames-list" class="space-y-2 max-h-48 overflow-y-auto">
+                                <p class="text-gray-500 text-sm">No usernames found yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Social Profiles Card -->
+                        <div class="bg-dark-200 rounded-xl p-5 border border-gray-800">
+                            <h4 class="font-semibold mb-3 flex items-center">
+                                <i class="fas fa-share-alt text-pink-500 mr-2"></i>Social Profiles
+                                <span id="social-count" class="ml-auto bg-pink-500/20 text-pink-400 px-2 py-0.5 rounded text-sm">0</span>
+                            </h4>
+                            <div id="social-list" class="space-y-2 max-h-48 overflow-y-auto">
+                                <p class="text-gray-500 text-sm">No social profiles found yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Associated Phones Card -->
+                        <div class="bg-dark-200 rounded-xl p-5 border border-gray-800">
+                            <h4 class="font-semibold mb-3 flex items-center">
+                                <i class="fas fa-phone text-yellow-500 mr-2"></i>Associated Phones
+                                <span id="phones-count" class="ml-auto bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded text-sm">0</span>
+                            </h4>
+                            <div id="phones-list" class="space-y-2 max-h-48 overflow-y-auto">
+                                <p class="text-gray-500 text-sm">No associated phones found yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Search Results -->
+                <div id="content-search" class="tab-content hidden">
+                    <div id="search-results-list" class="space-y-4">
+                        <p class="text-gray-500 text-center py-8">No search results yet</p>
+                    </div>
+                </div>
+
+                <!-- Tab Content: People Search -->
+                <div id="content-people" class="tab-content hidden">
+                    <div id="people-results-list" class="space-y-4">
+                        <p class="text-gray-500 text-center py-8">No people search results yet</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How to Use Section -->
+            <section id="how-to-use" class="max-w-4xl mx-auto mt-16">
+                <h2 class="text-2xl font-bold text-center mb-8">
+                    <i class="fas fa-book mr-2 text-primary"></i>How to Use TeleSpotter
+                </h2>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-dark-200 rounded-xl p-6 border border-gray-800">
+                        <div class="flex items-center mb-4">
+                            <span class="w-8 h-8 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold mr-3">1</span>
+                            <h3 class="font-semibold">Enter Phone Number</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Enter any phone number in the search box. TeleSpotter supports multiple formats:
+                        </p>
+                        <ul class="mt-2 text-gray-500 text-sm space-y-1">
+                            <li><code class="bg-dark-100 px-2 py-0.5 rounded">+1 (555) 123-4567</code></li>
+                            <li><code class="bg-dark-100 px-2 py-0.5 rounded">555-123-4567</code></li>
+                            <li><code class="bg-dark-100 px-2 py-0.5 rounded">5551234567</code></li>
+                            <li><code class="bg-dark-100 px-2 py-0.5 rounded">+44 20 7946 0958</code></li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-dark-200 rounded-xl p-6 border border-gray-800">
+                        <div class="flex items-center mb-4">
+                            <span class="w-8 h-8 bg-secondary/20 text-secondary rounded-full flex items-center justify-center font-bold mr-3">2</span>
+                            <h3 class="font-semibold">Configure Options</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Click "Advanced Options" to customize your search:
+                        </p>
+                        <ul class="mt-2 text-gray-500 text-sm space-y-1">
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Select search engines to query</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Choose people search sites</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Enable/disable pattern extraction</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-dark-200 rounded-xl p-6 border border-gray-800">
+                        <div class="flex items-center mb-4">
+                            <span class="w-8 h-8 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center font-bold mr-3">3</span>
+                            <h3 class="font-semibold">Review Results</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            TeleSpotter extracts and analyzes data in real-time:
+                        </p>
+                        <ul class="mt-2 text-gray-500 text-sm space-y-1">
+                            <li><i class="fas fa-user text-blue-500 mr-2"></i>Names associated with the number</li>
+                            <li><i class="fas fa-envelope text-green-500 mr-2"></i>Email addresses</li>
+                            <li><i class="fas fa-map-marker-alt text-red-500 mr-2"></i>Physical addresses</li>
+                            <li><i class="fas fa-share-alt text-pink-500 mr-2"></i>Social media profiles</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-dark-200 rounded-xl p-6 border border-gray-800">
+                        <div class="flex items-center mb-4">
+                            <span class="w-8 h-8 bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center font-bold mr-3">4</span>
+                            <h3 class="font-semibold">Export Data</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Export your findings in multiple formats:
+                        </p>
+                        <ul class="mt-2 text-gray-500 text-sm space-y-1">
+                            <li><i class="fas fa-file-code text-yellow-500 mr-2"></i>JSON - Full structured data</li>
+                            <li><i class="fas fa-file-csv text-green-500 mr-2"></i>CSV - Spreadsheet compatible</li>
+                            <li><i class="fas fa-file-alt text-blue-500 mr-2"></i>TXT - Human-readable report</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section class="max-w-4xl mx-auto mt-16">
+                <h2 class="text-2xl font-bold text-center mb-8">
+                    <i class="fas fa-star mr-2 text-yellow-500"></i>Features
+                </h2>
+
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="text-center p-6">
+                        <div class="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-bolt text-primary text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold mb-2">Real-Time Updates</h3>
+                        <p class="text-gray-400 text-sm">Watch results populate live as searches complete with WebSocket updates</p>
+                    </div>
+
+                    <div class="text-center p-6">
+                        <div class="w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-brain text-secondary text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold mb-2">Pattern Analysis</h3>
+                        <p class="text-gray-400 text-sm">Advanced algorithms extract names, emails, addresses from search results</p>
+                    </div>
+
+                    <div class="text-center p-6">
+                        <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-globe text-green-500 text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold mb-2">Multi-Source</h3>
+                        <p class="text-gray-400 text-sm">Queries multiple search engines and people search databases simultaneously</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Disclaimer -->
+            <section class="max-w-4xl mx-auto mt-16">
+                <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6">
+                    <h3 class="font-semibold text-yellow-500 mb-2">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Disclaimer
+                    </h3>
+                    <p class="text-gray-400 text-sm">
+                        This tool is intended for legitimate OSINT research purposes only. Users are responsible for
+                        ensuring their use complies with all applicable laws and regulations. Do not use this tool
+                        for harassment, stalking, or any illegal purposes. Results are aggregated from public sources
+                        and may not always be accurate or up-to-date.
+                    </p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-dark-200 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-700 flex items-center justify-between">
+                <h2 class="text-xl font-bold">
+                    <i class="fas fa-question-circle mr-2 text-primary"></i>Help & Documentation
+                </h2>
+                <button onclick="hideHelp()" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-6">
+                <div>
+                    <h3 class="font-semibold mb-2">What is TeleSpotter?</h3>
+                    <p class="text-gray-400 text-sm">
+                        TeleSpotter is a comprehensive phone number OSINT (Open Source Intelligence) tool that helps you
+                        research phone numbers by searching multiple sources and extracting useful information.
+                    </p>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold mb-2">Supported Phone Formats</h3>
+                    <p class="text-gray-400 text-sm mb-2">TeleSpotter accepts phone numbers in various formats:</p>
+                    <ul class="text-gray-500 text-sm space-y-1 list-disc list-inside">
+                        <li>International: +1 555 123 4567</li>
+                        <li>US Standard: (555) 123-4567</li>
+                        <li>Dashed: 555-123-4567</li>
+                        <li>Dotted: 555.123.4567</li>
+                        <li>Plain: 5551234567</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold mb-2">Data Sources</h3>
+                    <p class="text-gray-400 text-sm mb-2">TeleSpotter queries the following sources:</p>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="text-gray-500"><i class="fab fa-google text-red-500 mr-2"></i>Google</div>
+                        <div class="text-gray-500"><i class="fab fa-microsoft text-blue-400 mr-2"></i>Bing</div>
+                        <div class="text-gray-500"><i class="fas fa-search text-yellow-500 mr-2"></i>DuckDuckGo</div>
+                        <div class="text-gray-500"><i class="fas fa-book text-green-500 mr-2"></i>Whitepages</div>
+                        <div class="text-gray-500"><i class="fas fa-users text-purple-500 mr-2"></i>TruePeopleSearch</div>
+                        <div class="text-gray-500"><i class="fas fa-user-check text-pink-500 mr-2"></i>FastPeopleSearch</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold mb-2">Keyboard Shortcuts</h3>
+                    <div class="text-gray-500 text-sm space-y-1">
+                        <div><kbd class="bg-dark-100 px-2 py-1 rounded">Enter</kbd> - Start search</div>
+                        <div><kbd class="bg-dark-100 px-2 py-1 rounded">Esc</kbd> - Close modal</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold mb-2">Privacy</h3>
+                    <p class="text-gray-400 text-sm">
+                        TeleSpotter does not store your searches. All queries are processed in real-time and
+                        results are only kept in your browser session.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 mt-16 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-500 text-sm">
+                TeleSpotter - Phone Number OSINT Tool |
+                <a href="https://github.com/thumpersecure" target="_blank" class="text-primary hover:underline">GitHub</a>
+            </p>
+            <p class="text-gray-600 text-xs mt-2">
+                Use responsibly and ethically. For legitimate research purposes only.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Global state
+        let socket = null;
+        let currentSessionId = null;
+        let currentResults = null;
+
+        // Initialize Socket.IO
+        function initSocket() {
+            socket = io();
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+
+            socket.on('progress', (data) => {
+                updateProgress(data);
+            });
+
+            socket.on('result', (data) => {
+                updateResults(data);
+            });
+
+            socket.on('joined', (data) => {
+                console.log('Joined session:', data.session_id);
+            });
+        }
+
+        // Toggle options panel
+        function toggleOptions() {
+            const panel = document.getElementById('options-panel');
+            const icon = document.getElementById('options-icon');
+            panel.classList.toggle('hidden');
+            icon.classList.toggle('rotate-90');
+        }
+
+        // Show help modal
+        function showHelp() {
+            document.getElementById('help-modal').classList.remove('hidden');
+        }
+
+        // Hide help modal
+        function hideHelp() {
+            document.getElementById('help-modal').classList.add('hidden');
+        }
+
+        // Show tab
+        function showTab(tabName) {
+            // Hide all content
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Remove active from all tabs
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                el.classList.add('text-gray-400');
+            });
+
+            // Show selected content
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            // Activate tab
+            const tabBtn = document.getElementById(`tab-${tabName}`);
+            tabBtn.classList.remove('text-gray-400');
+            tabBtn.classList.add('text-primary', 'border-b-2', 'border-primary');
+        }
+
+        // Get options from form
+        function getOptions() {
+            return {
+                search_engines: true,
+                google: document.getElementById('opt-google').checked,
+                bing: document.getElementById('opt-bing').checked,
+                duckduckgo: document.getElementById('opt-duckduckgo').checked,
+                people_search: true,
+                whitepages: document.getElementById('opt-whitepages').checked,
+                truepeoplesearch: document.getElementById('opt-truepeoplesearch').checked,
+                fastpeoplesearch: document.getElementById('opt-fastpeoplesearch').checked,
+                spokeo: document.getElementById('opt-spokeo').checked,
+                beenverified: document.getElementById('opt-beenverified').checked,
+                extract_names: document.getElementById('opt-extract-names').checked,
+                extract_emails: document.getElementById('opt-extract-emails').checked,
+                extract_addresses: document.getElementById('opt-extract-addresses').checked,
+                extract_social: document.getElementById('opt-extract-social').checked,
+            };
+        }
+
+        // Start search
+        async function startSearch(phoneNumber) {
+            const options = getOptions();
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone_number: phoneNumber, options })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    resetForm();
+                    return;
+                }
+
+                currentSessionId = data.session_id;
+
+                // Join socket room
+                socket.emit('join', { session_id: currentSessionId });
+
+                // Show progress section
+                document.getElementById('progress-section').classList.remove('hidden');
+                document.getElementById('results-section').classList.remove('hidden');
+
+                // Initialize results
+                currentResults = {
+                    phone_info: {},
+                    patterns: {
+                        names: [],
+                        emails: [],
+                        addresses: [],
+                        usernames: [],
+                        social_profiles: [],
+                        associated_phones: []
+                    },
+                    search_engines: [],
+                    people_search: []
+                };
+
+            } catch (error) {
+                console.error('Search error:', error);
+                alert('Failed to start search. Please try again.');
+                resetForm();
+            }
+        }
+
+        // Update progress display
+        function updateProgress(data) {
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercent = document.getElementById('progress-percent');
+            const progressMessage = document.getElementById('progress-message');
+            const liveUpdates = document.getElementById('live-updates');
+
+            progressBar.style.width = `${data.progress}%`;
+            progressPercent.textContent = `${data.progress}%`;
+            progressMessage.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${data.message}`;
+
+            // Add to live updates
+            const update = document.createElement('div');
+            update.className = 'text-xs text-gray-500 slide-in';
+            update.innerHTML = `<span class="text-gray-600">[${new Date().toLocaleTimeString()}]</span> ${data.message}`;
+            liveUpdates.appendChild(update);
+            liveUpdates.scrollTop = liveUpdates.scrollHeight;
+
+            // If complete
+            if (data.status === 'complete') {
+                progressMessage.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i>Search complete!`;
+                resetForm();
+            } else if (data.status === 'error') {
+                progressMessage.innerHTML = `<i class="fas fa-exclamation-circle text-red-500 mr-2"></i>${data.message}`;
+                resetForm();
+            }
+        }
+
+        // Update results display
+        function updateResults(data) {
+            if (data.type === 'phone_info') {
+                currentResults.phone_info = data.data;
+                renderPhoneInfo(data.data);
+            } else if (data.type === 'pattern') {
+                if (data.data.type && Array.isArray(data.data.data)) {
+                    currentResults.patterns[data.data.type] = data.data.data;
+                }
+                renderPatterns();
+            } else if (data.type === 'search_engine') {
+                currentResults.search_engines.push(...data.data.results);
+                renderSearchResults();
+            } else if (data.type === 'people_search') {
+                currentResults.people_search.push(...data.data.results);
+                renderPeopleResults();
+            } else if (data.type === 'complete') {
+                currentResults = data.data;
+                renderAllResults();
+            }
+        }
+
+        // Render phone info
+        function renderPhoneInfo(info) {
+            const container = document.getElementById('phone-info-content');
+            container.innerHTML = `
+                <div class="bg-dark-100 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 mb-1">Formatted</p>
+                    <p class="font-mono">${info.formatted || info.original || 'N/A'}</p>
+                </div>
+                <div class="bg-dark-100 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 mb-1">Country</p>
+                    <p>${info.country || 'Unknown'}</p>
+                </div>
+                <div class="bg-dark-100 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 mb-1">Location</p>
+                    <p>${info.location || 'Unknown'}</p>
+                </div>
+                <div class="bg-dark-100 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 mb-1">Line Type</p>
+                    <p>${info.line_type || 'Unknown'}</p>
+                </div>
+            `;
+        }
+
+        // Render patterns
+        function renderPatterns() {
+            // Names
+            const namesList = document.getElementById('names-list');
+            const names = currentResults.patterns.names || [];
+            document.getElementById('names-count').textContent = names.length;
+            if (names.length > 0) {
+                namesList.innerHTML = names.map(n => `
+                    <div class="flex items-center justify-between bg-dark-100 rounded px-3 py-2 slide-in">
+                        <span>${n.value}</span>
+                        <span class="text-xs text-gray-500">${n.confidence}%</span>
+                    </div>
+                `).join('');
+            }
+
+            // Emails
+            const emailsList = document.getElementById('emails-list');
+            const emails = currentResults.patterns.emails || [];
+            document.getElementById('emails-count').textContent = emails.length;
+            if (emails.length > 0) {
+                emailsList.innerHTML = emails.map(e => `
+                    <div class="bg-dark-100 rounded px-3 py-2 slide-in">
+                        <span class="text-green-400">${e.value}</span>
+                    </div>
+                `).join('');
+            }
+
+            // Addresses
+            const addressesList = document.getElementById('addresses-list');
+            const addresses = currentResults.patterns.addresses || [];
+            document.getElementById('addresses-count').textContent = addresses.length;
+            if (addresses.length > 0) {
+                addressesList.innerHTML = addresses.map(a => `
+                    <div class="bg-dark-100 rounded px-3 py-2 slide-in text-sm">
+                        ${a.value}
+                    </div>
+                `).join('');
+            }
+
+            // Usernames
+            const usernamesList = document.getElementById('usernames-list');
+            const usernames = currentResults.patterns.usernames || [];
+            document.getElementById('usernames-count').textContent = usernames.length;
+            if (usernames.length > 0) {
+                usernamesList.innerHTML = usernames.map(u => `
+                    <div class="bg-dark-100 rounded px-3 py-2 slide-in">
+                        <span class="text-purple-400">${u.value}</span>
+                    </div>
+                `).join('');
+            }
+
+            // Social profiles
+            const socialList = document.getElementById('social-list');
+            const social = currentResults.patterns.social_profiles || [];
+            document.getElementById('social-count').textContent = social.length;
+            if (social.length > 0) {
+                socialList.innerHTML = social.map(s => `
+                    <a href="${s.url}" target="_blank" class="block bg-dark-100 rounded px-3 py-2 slide-in hover:bg-dark-100/70 transition">
+                        <span class="text-pink-400">${s.platform}</span>
+                        <span class="text-gray-400 text-sm ml-2">@${s.username}</span>
+                    </a>
+                `).join('');
+            }
+
+            // Associated phones
+            const phonesList = document.getElementById('phones-list');
+            const phones = currentResults.patterns.associated_phones || [];
+            document.getElementById('phones-count').textContent = phones.length;
+            if (phones.length > 0) {
+                phonesList.innerHTML = phones.map(p => `
+                    <div class="bg-dark-100 rounded px-3 py-2 slide-in">
+                        <span class="text-yellow-400 font-mono">${p.value}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Render search results
+        function renderSearchResults() {
+            const container = document.getElementById('search-results-list');
+            const results = currentResults.search_engines || [];
+
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">No search results yet</p>';
+                return;
+            }
+
+            container.innerHTML = results.map(r => `
+                <a href="${r.url}" target="_blank" class="block bg-dark-200 rounded-xl p-4 border border-gray-800 hover:border-gray-700 transition slide-in">
+                    <div class="flex items-start justify-between">
+                        <h4 class="text-primary font-medium">${r.title}</h4>
+                        <span class="text-xs bg-dark-100 px-2 py-1 rounded">${r.source}</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-2">${r.snippet}</p>
+                    <p class="text-xs text-gray-600 mt-2 truncate">${r.url}</p>
+                </a>
+            `).join('');
+        }
+
+        // Render people results
+        function renderPeopleResults() {
+            const container = document.getElementById('people-results-list');
+            const results = currentResults.people_search || [];
+
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">No people search results yet</p>';
+                return;
+            }
+
+            container.innerHTML = results.map(r => `
+                <div class="bg-dark-200 rounded-xl p-4 border border-gray-800 slide-in">
+                    <div class="flex items-start justify-between">
+                        <h4 class="font-medium">${r.name || 'Unknown'}</h4>
+                        <span class="text-xs bg-dark-100 px-2 py-1 rounded">${r.source}</span>
+                    </div>
+                    ${r.age ? `<p class="text-sm text-gray-400 mt-1">Age: ${r.age}</p>` : ''}
+                    ${r.address ? `<p class="text-sm text-gray-400 mt-1"><i class="fas fa-map-marker-alt text-red-500 mr-2"></i>${r.address}</p>` : ''}
+                    ${r.url ? `<a href="${r.url}" target="_blank" class="text-xs text-primary hover:underline mt-2 inline-block">View on ${r.source}</a>` : ''}
+                    ${r.note ? `<p class="text-xs text-gray-500 mt-2 italic">${r.note}</p>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Render all results
+        function renderAllResults() {
+            renderPhoneInfo(currentResults.phone_info || {});
+            renderPatterns();
+            renderSearchResults();
+            renderPeopleResults();
+        }
+
+        // Export results
+        function exportResults(format) {
+            if (!currentSessionId) {
+                alert('No results to export');
+                return;
+            }
+
+            window.open(`/api/search/${currentSessionId}/export?format=${format}`, '_blank');
+        }
+
+        // Reset form
+        function resetForm() {
+            document.getElementById('search-btn').disabled = false;
+            document.getElementById('btn-text').classList.remove('hidden');
+            document.getElementById('btn-loading').classList.add('hidden');
+        }
+
+        // Form submit handler
+        document.getElementById('search-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const phoneInput = document.getElementById('phone-input');
+            const phoneNumber = phoneInput.value.trim();
+
+            if (!phoneNumber) {
+                alert('Please enter a phone number');
+                return;
+            }
+
+            // Disable button and show loading
+            const btn = document.getElementById('search-btn');
+            btn.disabled = true;
+            document.getElementById('btn-text').classList.add('hidden');
+            document.getElementById('btn-loading').classList.remove('hidden');
+
+            // Clear previous results
+            document.getElementById('live-updates').innerHTML = '';
+
+            // Start search
+            await startSearch(phoneNumber);
+        });
+
+        // Phone input validation
+        document.getElementById('phone-input').addEventListener('input', async (e) => {
+            const phone = e.target.value.trim();
+            const validationIcon = document.getElementById('phone-validation');
+
+            if (phone.length >= 10) {
+                try {
+                    const response = await fetch('/api/validate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone_number: phone })
+                    });
+                    const data = await response.json();
+
+                    if (data.valid) {
+                        validationIcon.classList.remove('hidden');
+                    } else {
+                        validationIcon.classList.add('hidden');
+                    }
+                } catch (e) {
+                    validationIcon.classList.add('hidden');
+                }
+            } else {
+                validationIcon.classList.add('hidden');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideHelp();
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+        });
+    </script>
+</body>
+</html>
