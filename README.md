@@ -2,7 +2,7 @@
   <img src="https://img.icons8.com/fluency/96/phone-disconnected.png" alt="TeleSpotter Logo" width="96" height="96">
 </p>
 
-<h1 align="center">🔍 TeleSpotter Web</h1>
+<h1 align="center">🔍 telespotXX Web</h1>
 
 <p align="center">
   <strong>The Ultimate Phone Number Intelligence Platform</strong>
