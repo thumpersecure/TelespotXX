@@ -5,20 +5,20 @@ Flask==3.0.0
 flask-socketio==5.3.6
 
 # WebSocket Support
-python-socketio==5.10.0
+python-socketio==5.14.0
 python-engineio==4.8.1
-eventlet==0.34.2
+eventlet==0.40.3
 
 # HTTP Requests
-requests==2.31.0
-urllib3==2.1.0
+requests==2.32.4
+urllib3==2.6.3
 
 # HTML Parsing
 beautifulsoup4==4.12.2
 lxml==4.9.4
 
 # Production Server
-gunicorn==21.2.0
+gunicorn==22.0.0
 gevent==23.9.1
 gevent-websocket==0.10.1
 
