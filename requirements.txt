@@ -1,0 +1,2 @@
+# Include webapp dependencies
+-r webapp/requirements.txt
