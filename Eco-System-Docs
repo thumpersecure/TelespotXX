@@ -1,0 +1,148 @@
+# Telespot Research Documentation
+
+## Overview
+
+**Telespot** is a phone-number-centric open-source intelligence (OSINT) ecosystem designed to automate early-stage reconnaissance while preserving analyst control, transparency, and ethical boundaries.
+
+The ecosystem consists of three closely related tools:
+
+Telespot — Python-based command-line utility  
+TeleSpotter — High-performance Rust implementation  
+TeleSpotXX — Real-time web-based platform  
+
+Together, these tools form a cohesive workflow for triaging phone numbers across multiple public data sources and extracting correlation signals such as names, locations, usernames, email addresses, and related identifiers.
+
+This documentation describes the motivation, architecture, execution models, and operational considerations of the Telespot ecosystem.
+
+---
+
+## Purpose and Scope
+
+Phone numbers are persistent identifiers used across telecommunications systems, authentication workflows, online marketplaces, and social platforms. Because they are frequently reused and retained for long periods, they serve as a high-value pivot point in OSINT investigations.
+
+The purpose of Telespot is to automate repetitive and error-prone tasks involved in early-stage phone-number analysis, including:
+
+Generating multiple phone-number format permutations  
+Querying multiple search engines and public databases  
+Extracting and correlating recurring identifiers  
+Highlighting probabilistic signals rather than asserting attribution  
+
+The scope of the project is intentionally limited to publicly accessible data. The tools are not designed to deanonymize, track, or definitively attribute individuals. Their role is to assist analysts in determining whether deeper investigation is justified.
+
+---
+
+## Design Philosophy
+
+All components of the Telespot ecosystem adhere to a consistent set of principles.
+
+The phone number is treated as the primary investigative entity rather than auxiliary metadata.  
+Automation is used to reduce friction, not replace analyst judgment.  
+Outputs emphasize correlation signals rather than definitive claims.  
+Execution models explicitly acknowledge trade-offs between speed, stealth, and detection risk.  
+Transparency is maintained through open-source code, visible execution logic, and documented limitations.
+
+---
+
+## Tooling Overview
+
+### Telespot (Python)
+
+Telespot is the original implementation of the project. It is a single-script Python tool intended to run locally with minimal configuration.
+
+The tool automatically generates up to ten phone-number format variations and queries multiple search engines, including Google, Bing, DuckDuckGo, and optionally Dehashed.
+
+Search results are parsed to extract names, locations, and usernames from publicly visible snippets. Repeated occurrences across engines and formats are highlighted as potential intelligence signals.
+
+Two execution modes are supported.
+
+Standard mode emphasizes stealth through randomized delays, user-agent rotation, and request spacing. Typical execution time is approximately sixty seconds.
+
+Fast mode, implemented as `telespotx.py`, uses asynchronous execution and parallel requests. It is optimized for U.S. numbers and reduces execution time to roughly five seconds at the cost of increased detection risk and reduced international flexibility.
+
+---
+
+### TeleSpotter (Rust)
+
+TeleSpotter is a complete rewrite of Telespot in Rust, motivated by performance, stability, and modularity.
+
+The architecture separates phone parsing, search execution, and pattern extraction into distinct components. Asynchronous execution is implemented using `tokio` and `reqwest`.
+
+TeleSpotter expands pattern extraction to include email addresses alongside names, locations, and usernames. It integrates with external OSINT tools and people-search databases, including Sherlock, Blackbird, and email2phonenumber.
+
+Anti-detection features include configurable delays, exponential backoff, and rotation across fifteen user-agent strings.
+
+Documented benchmarks indicate a reduction in execution time from approximately sixty-five seconds to eighteen seconds and a decrease in memory usage from roughly forty-eight megabytes to eight megabytes.
+
+These characteristics make TeleSpotter suitable for higher-volume workflows and resource-constrained environments.
+
+---
+
+### TeleSpotXX (Web Platform)
+
+TeleSpotXX extends the ecosystem into a browser-based platform.
+
+It is built with a Flask backend and a modern front-end using Tailwind CSS. The platform unifies the capabilities of Telespot, its fast mode, and TeleSpotter behind an interactive interface.
+
+TeleSpotXX supports multi-engine searches, multiple people-lookup databases, and the same pattern-recognition logic used in TeleSpotter.
+
+Results are streamed to the browser in real time using WebSockets, allowing analysts to observe findings as they are discovered rather than waiting for full execution.
+
+The platform can be deployed locally or via Docker and supports a wide range of domestic and international phone formats.
+
+TeleSpotXX lowers the barrier to entry for analysts who prefer graphical interfaces while preserving transparency and configurability.
+
+---
+
+## Architecture
+
+The original Telespot implementation consists of a monolithic Python script using synchronous HTTP requests and regular-expression-based extraction.
+
+The fast mode introduces asynchronous execution using `asyncio` and `httpx` to parallelize requests and reduce latency.
+
+TeleSpotter adopts a fully asynchronous, modular Rust architecture that cleanly separates parsing, querying, and analysis stages.
+
+TeleSpotXX operates using a client-server model. The backend dispatches search tasks to underlying modules, while the front-end renders partial and final results in real time.
+
+---
+
+## Evaluation Criteria
+
+The ecosystem is evaluated using three primary criteria.
+
+Execution time under typical network conditions  
+Memory usage based on documented benchmarks  
+Feature coverage, including supported engines, databases, and extracted pattern types  
+
+Due to variability in live search-engine behavior, benchmarks are indicative rather than absolute.
+
+---
+
+## Ethical and Legal Considerations
+
+All tools in the Telespot ecosystem operate exclusively on publicly accessible information.
+
+No authentication is bypassed, no paywalls are evaded, and no private databases are accessed.
+
+TeleSpotXX does not store data centrally, and session-based execution minimizes retention risk.
+
+By focusing on probabilistic signal discovery rather than attribution, the tools reduce the risk of misuse and overconfidence.
+
+Open-source transparency allows users to audit behavior, validate claims, and understand limitations.
+
+---
+
+## Future Development
+
+Potential future work includes expanded international number handling, improved language-agnostic pattern extraction, integration with passive breach datasets, and adaptive throttling based on real-time detection feedback.
+
+More broadly, the Telespot ecosystem reflects a shift toward precision OSINT tools designed to answer narrowly scoped investigative questions quickly and transparently rather than serving as monolithic intelligence frameworks.
+
+---
+
+## Conclusion
+
+The Telespot ecosystem demonstrates how a focused OSINT problem can be addressed through iterative engineering across languages and platforms.
+
+From a Python script to an asynchronous fast mode, a Rust rewrite, and a real-time web application, the project achieves substantial gains in speed, usability, and accessibility without compromising ethical constraints or analyst judgment.
+
+Telespot, TeleSpotter, and TeleSpotXX collectively fill a critical gap in phone-number-centric OSINT and provide a reference model for future focused intelligence tooling.
