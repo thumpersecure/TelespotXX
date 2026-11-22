@@ -611,3 +611,5 @@ copies of the Software...
 <p align="center">
   <sub>If TeleSpotter helped you, consider giving it a ⭐!</sub>
 </p>
+
+Made by [justinhorn.pro](https://justinhorn.pro)
